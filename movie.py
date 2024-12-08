@@ -1,57 +1,58 @@
 
 class Movie:
-    def __init__(self, title, index):
+    def __init__(self, title: str) -> None:
         """
         Create a Movie object with two required attributes.
         """
         self.title = title
-        self.index = index
         self.newTitle = ''
         self.year = ''
-        self.rating = ''
+        self.imdbID = ''
         self.runtime = ''
+        self.rating = ''
         self.apiResponse = ''
     
-    def setAPIResponse(self, response):
+    def setAPIResponse(self, response: str) -> None:
         """
         Set the API response attribute of the object.
-        @param response - JSON response from the API.
         """
         self.apiResponse = response
         self.newTitle = self.apiResponse.get('Title','')
         self.year = self.apiResponse.get('Year','')
+        self.imdbID = self.apiResponse.get('imdbID','')
         self.rating = self.apiResponse.get('Rated','')
         self.runtime = self.apiResponse.get('Runtime',' min').strip(' min')
         print(self.getAllString())
     
-    def setOthers(self, year, rating, runtime):
+    def setOthers(self, year: int, rating: str, runtime: int) -> None:
         """
         Set object variables where needed.
-        @param year - Release year.
-        @param rating - Movie rating.
-        @param runtime - Movie runtime.
         """
         self.year = year
         self.rating = rating
         self.runtime = runtime
 
-    def getTitle(self):
+    def getTitle(self) -> str:
         """
-        Get movie title.
-        @return str
+        Get user input movie title.
         """
         return self.title
-    
-    def getAPIResponse(self):
+
+    def getNewTitle(self) -> str:
         """
-        Get the API Response
-        @return dict
+        Get correct movie title.
+        """
+        return self.newTitle
+    
+    def getAPIResponse(self) -> dict:
+        """
+        Get the API Response.
         """
         return self.apiResponse
     
-    def getAllString(self):
+    def getAllString(self) -> str:
         """
-        Get everything (except API Response).
-        @return str
+        Return string format for output CSV.
         """
-        return f"{self.title},{self.index},{self.year},{self.runtime},{self.rating}"
+        returnStr = f"{self.title},{self.year},{self.imdbID},{self.runtime},{self.rating},,,,,"
+        return returnStr    

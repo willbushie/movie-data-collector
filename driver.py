@@ -1,12 +1,11 @@
 import requests
+import json
 
 from movie import Movie
 
-def readSecrets(filename):
+def readSecrets(filename: str) -> dict:
 	"""
 	Read secrets file.
-	@param filename - Filename of the secrets file.
-	@return dict
 	"""
 	secrets = {}
 	try:
@@ -18,28 +17,23 @@ def readSecrets(filename):
 		raise FileNotFoundError
 	return secrets
 
-def readMovieList(filename):
+def readInput(filename: str) -> dict:
 	"""
-	Read the movies list.
-	@param filename - Filename of the movie list file.
-	@return dict
+	Read the input file & return dict of movie objects.
 	"""
 	movies = {}
 	try:
 		movieFile = open(filename,'r')
 		for line in movieFile:
-			splitLine = line.split(',')
-			currMovie = Movie(splitLine[0],splitLine[1].strip('\n'))
-			movies.update({currMovie.getTitle:currMovie})
+			currMovie = Movie(line.strip('\n'))
+			movies.update({currMovie.getTitle():currMovie})
 	except (FileNotFoundError):
 		raise FileNotFoundError
 	return movies
 
-def readMaster(filename):
+def readLocalDB(filename: str) -> list:
 	"""
-	Read master file, getting titles and returning them as a list.
-	@param filename - Filename of the master file.
-	@return list
+	Read local DB file into memory.
 	"""
 	titles = []
 	file = open(filename,'r')
@@ -48,81 +42,47 @@ def readMaster(filename):
 		titles.append(splitLine[0])
 	return titles
 
-def createMoviesFromMaster(filename):
+def createMoviesFromLocalDB(filename: str) -> list:
 	"""
-	Create Movie objects from reading the master file.
-	@param filename - Filename of the master file.
-	@return list
+	Create Movie objects from reading the local DB file.
 	"""
 	movies = []
 	file = open(filename,'r')
 	for line in file:
-		splitLine = line.split('=')
-		title = splitLine[0]
-		summary = splitLine[1].split(',')
-		index = summary[1]
-		year = summary[2]
-		rating = summary[4]
-		runtime = summary[3]
-		currMovie = Movie(title,index)
-		currMovie.setOthers(year,rating,runtime)
+		lineDict = json.loads(line)
+		currMovie = Movie(lineDict.get('Title',''))
+		currMovie.setAPIResponse(lineDict)
 		movies.append(currMovie)
 	return movies
 
-def createMoviesFromNotFound(filename):
+def writeToLocalDB(filename: str, movie: Movie) -> None:
 	"""
-	Create Movie objects from reading the not found file. 
-	@param filename - Filename of the not found file. 
-	@return list
-	"""
-	movies = []
-	file = open(filename,'r')
-	for line in file:
-		summary = line.split('=')[1].split(',')
-		title = summary[0]
-		index = summary[1]
-		movies.append(Movie(title,index))
-	return movies
-
-def writeToMaster(filename, movie):
-	"""
-	Write to the end of the master file.
-	@param filename - Filename of the master file.
-	@param movie - Movie object with writeable data.
+	Write to the end of the local DB file.
 	"""
 	with open(filename,'a+') as file:
-		writeStr = f"{movie.getTitle()}={movie.getAllString()}={movie.getAPIResponse()}\n"
+		writeStr = f"{movie.getAPIResponse()}\n"
 		file.seek(0,2)
 		file.write(writeStr)
 	file.close()
 
-def writeCleanOutput(cleanFile, masterFile, notFoundFile):
+def writeOutput(output: str, movieList: list[Movie]) -> None:
 	"""
 	Write a clean CSV like output to the Clean file.
-	@param cleanFile - Filename of the clean file.
-	@param masterFile - Filename of the master file.
 	"""
 	cleanWrites = 0
-	completedMovies = createMoviesFromMaster(masterFile)
-	notFoundMovies = createMoviesFromNotFound(notFoundFile)
-	with open(cleanFile,'w') as file:
-		file.write('Movie Name,Index,Release Year,Length (Min),Rating\n')
+	with open(output,'w') as file:
+		file.write('Movie Name,Release Year,imdbid,Format On NAS,Length (Min),'
+			 'Rating,Disc Type,Date Ripped,Receipt,Cost,Note\n')
 		cleanWrites += 1
-		for movie in completedMovies:
-			file.write(f"{movie.getAllString()}\n")
-			cleanWrites += 1
-		for movie in notFoundMovies:
+		for movie in movieList:
 			file.write(f"{movie.getAllString()}\n")
 			cleanWrites += 1
 	file.close()
 	print(f"Writes to clean file: {cleanWrites}")
 
-def callAPI(APIKey, title):
+def callAPI(APIKey: str, title: str) -> dict:
 	"""
 	Call the OMDb API.
-	@param APIKey - API Key, should be stored in secrets.
-	@param title - Basic title of movie
-	@return dict
 	"""
 	requestObj = requests.get(f"http://www.omdbapi.com/?t={title}&apikey={APIKey}")
 	if requestObj.status_code != 200:
@@ -130,52 +90,44 @@ def callAPI(APIKey, title):
 	elif requestObj.status_code == 200:
 		return requestObj.json()
 
-def process(APIKey, filename, master, movies, notFoundFile, notFound):
+def process(APIKey: str, localDBFile: str, movies: list) -> list:
 	"""
 	Process all of the movies, requesting the API where necessary.
-	@param APIKey - API Key, should be store in secrets.
-	@param filename - filename of the master file.
-	@param master - List of titles obtained from master file (prevents duplicate requests).
-	@param movies - Dictionary of movies, searchable by title.
-	@param notFoundFile - filename of the 'Not Found' file.
-	@param notFound - List of movies that were previously not found (stops duplicate requests).
-	@return list
 	"""
 	returnList = []
-	masterWrites = 0
-	notFoundWrites = 0
+	moviesFound = 0
+	moviesNotFound = 0
 	movieList = movies.values()
 	for movie in movieList:
-		currTitle = movie.getTitle()
-		if (currTitle not in master and currTitle not in notFound):
-			response = callAPI(APIKey, movie.getTitle())
-			movie.setAPIResponse(response)
-			if (response.get('Error') == 'Movie not found!'):
-				writeToMaster(notFoundFile,movie)
-				notFoundWrites += 1
-			elif (response.get('Error') != 'Movie not found!'):
-				writeToMaster(filename, movie)
-				masterWrites += 1
-			returnList.append(movie)
-	print(f"Writes to master file: {masterWrites} | Writes to not found file: {notFoundWrites}")
+		response = callAPI(APIKey, movie.getTitle())
+		movie.setAPIResponse(response)
+		if (response.get('Error') == 'Movie not found!'):
+			moviesNotFound += 1
+		elif (response.get('Error') != 'Movie not found!'):
+			writeToLocalDB(localDBFile, movie)
+			moviesFound += 1
+		returnList.append(movie)
+	print(f"Movies Found: {moviesFound} | Movies Not Found: {moviesNotFound}")
 	return returnList
 
-def main():
+def main() -> None:
 	print('begin processing...')
 
+	# set file paths
+	inputFile = 'input.txt'
+	localDBFile = 'localMovieDB.txt'
+	outputFile = 'output.txt'
+
+	# read in api key
 	secrets = readSecrets('secrets.txt')
 	APIKey = secrets.get('OMDb API Key')
-	movieListFile = secrets.get('Movie List')
-	masterFile = secrets.get('Master File')
-	notFoundFile = secrets.get('Not Found File')
-	cleanFile = secrets.get('Clean Output')
 
-	movies = readMovieList(movieListFile)
-	masterList = readMaster(masterFile)
-	notFound = readMaster(notFoundFile)
+	# read input & local movie DB files
+	inputMovies = readInput(inputFile)
 
-	resultList = process(APIKey, masterFile, masterList, movies, notFoundFile, notFound)
-	writeCleanOutput(cleanFile, masterFile, notFoundFile)
+	# process records & write output
+	resultList = process(APIKey, localDBFile, inputMovies)
+	writeOutput(outputFile, resultList)
 
 	print('processing complete')
 
