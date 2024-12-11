@@ -85,6 +85,9 @@ def writeOutput(output: str, movieList: list[Movie]) -> None:
 def callAPI(APIKey: str, title: str) -> dict:
 	"""
 	Call the OMDb API.
+
+	NOTE: If using the free version, there is a 1,000 request daily limit.
+	There is currently no method of checking if requests exceed the daily limit.
 	"""
 	requestObj = requests.get(f"http://www.omdbapi.com/?t={title}&apikey={APIKey}")
 	if requestObj.status_code != 200:
@@ -92,7 +95,7 @@ def callAPI(APIKey: str, title: str) -> dict:
 	elif requestObj.status_code == 200:
 		return requestObj.json()
 
-def process(APIKey: str, localDBFile: str, movies: list) -> list:
+def process(APIKey: str, localDBFile: str, movies: dict) -> list:
 	"""
 	Process all of the movies, requesting the API where necessary.
 	"""
@@ -100,6 +103,7 @@ def process(APIKey: str, localDBFile: str, movies: list) -> list:
 	moviesFound = 0
 	moviesNotFound = 0
 	movieList = movies.values()
+	movie: Movie
 	for movie in movieList:
 		response = callAPI(APIKey, movie.getTitle())
 		movie.setAPIResponse(response)

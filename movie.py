@@ -12,7 +12,7 @@ class Movie:
         self.rating = ''
         self.apiResponse = ''
     
-    def setAPIResponse(self, response: str) -> None:
+    def setAPIResponse(self, response: dict) -> None:
         """
         Set the API response attribute of the object.
         """
