@@ -22,7 +22,7 @@ class Movie:
         self.imdbID = self.apiResponse.get('imdbID','')
         self.rating = self.apiResponse.get('Rated','')
         self.runtime = self.apiResponse.get('Runtime',' min').strip(' min')
-        print(self.getAllString())
+        print(self.getAllString(','))
     
     def setOthers(self, year: int, rating: str, runtime: int) -> None:
         """
@@ -50,9 +50,12 @@ class Movie:
         """
         return self.apiResponse
     
-    def getAllString(self) -> str:
+    def getAllString(self, delim: str = '\t') -> str:
         """
         Return string format for output CSV.
+
+        NOTE: The default delimiter is a tab (python `'\t'`) for easy copy/pasting into a spreadsheet.
+        If a CSV output is desired, this layout may need to be modified.
         """
-        returnStr = f"{self.title},{self.year},{self.imdbID},{self.runtime},{self.rating},,,,,"
+        returnStr = f"{self.title}{delim}{self.year}{delim}{self.imdbID}{delim * 2}{self.runtime}{delim}{self.rating}"
         return returnStr    

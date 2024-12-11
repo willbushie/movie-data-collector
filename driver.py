@@ -71,10 +71,12 @@ def writeOutput(output: str, movieList: list[Movie]) -> None:
 	"""
 	cleanWrites = 0
 	with open(output,'w') as file:
-		file.write('Movie Name,Release Year,imdbid,Format On NAS,Length (Min),'
-			 'Rating,Disc Type,Date Ripped,Receipt,Cost,Note\n')
+		# If a CSV ouput is desired, uncomment/modify this for the column labels
+		# file.write('Movie Name,Release Year,imdbid,Format On NAS,Length (Min),'
+		# 	 'Rating,Disc Type,Date Ripped,Receipt,Cost,Note\n')
 		cleanWrites += 1
 		for movie in movieList:
+			# if CSV output is desired, modify .getAllString(delim = ',') to modify the delimiter
 			file.write(f"{movie.getAllString()}\n")
 			cleanWrites += 1
 	file.close()
